@@ -1,0 +1,17 @@
+# Pair: Natural Gas vs Ammonia
+pair_data = merged_df[['Natural Gas (Henry Hub $/MMBtu)', 'Ammonia ($/MT)']].dropna()
+count = len(pair_data)
+
+corr = pair_data.corr().iloc[0, 1]
+
+# Visualization
+plt.figure(figsize=(8, 6))
+sns.regplot(data=pair_data, x='Natural Gas (Henry Hub $/MMBtu)', y='Ammonia ($/MT)')
+plt.title(f'Natural Gas vs Ammonia (r={corr:.2f})')
+plt.xlabel('Natural Gas (Henry Hub $/MMBtu)')
+plt.ylabel('Ammonia ($/MT)')
+plt.tight_layout()
+plt.savefig('natural_gas_vs_ammonia.png')
+
+print(f"Correlation: {corr}")
+print(f"Data points: {count}")
