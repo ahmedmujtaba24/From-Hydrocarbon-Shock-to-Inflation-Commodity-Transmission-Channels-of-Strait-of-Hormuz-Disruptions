@@ -1,0 +1,50 @@
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Date, Brent Crude ($/bbl), Natural Gas (Henry Hub $/MMBtu), Sulphur ($/MT), Ammonia ($/MT), Urea ($/MT), DAP ($/MT)
+
+# Pair 1: Brent oil vs Sulphur
+pair1_data = merged_df[['Brent Crude ($/bbl)', 'Sulphur ($/MT)']].dropna()
+count1 = len(pair1_data)
+
+# Pair 2: Sulphur vs DAP Fertilizer
+pair2_data = merged_df[['Sulphur ($/MT)', 'DAP ($/MT)']].dropna()
+count2 = len(pair2_data)
+
+print(f"Brent Crude vs Sulphur: {count1} data points")
+print(f"Sulphur vs DAP: {count2} data points")
+
+if count1 >= 4:
+    corr1 = pair1_data.corr().iloc[0, 1]
+    print(f"Correlation Brent vs Sulphur: {corr1}")
+else:
+    corr1 = None
+    print("Insufficient data for Brent vs Sulphur")
+
+if count2 >= 4:
+    corr2 = pair2_data.corr().iloc[0, 1]
+    print(f"Correlation Sulphur vs DAP: {corr2}")
+else:
+    corr2 = None
+    print("Insufficient data for Sulphur vs DAP")
+
+# Visualizations
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+if count1 >= 4:
+    sns.regplot(data=pair1_data, x='Brent Crude ($/bbl)', y='Sulphur ($/MT)', ax=axes[0])
+    axes[0].set_title(f'Brent Crude vs Sulphur (r={corr1:.2f})')
+else:
+    axes[0].text(0.5, 0.5, 'Insufficient Data', ha='center')
+    axes[0].set_title('Brent Crude vs Sulphur')
+
+if count2 >= 4:
+    sns.regplot(data=pair2_data, x='Sulphur ($/MT)', y='DAP ($/MT)', ax=axes[1])
+    axes[1].set_title(f'Sulphur vs DAP (r={corr2:.2f})')
+else:
+    axes[1].text(0.5, 0.5, 'Insufficient Data', ha='center')
+    axes[1].set_title('Sulphur vs DAP')
+
+plt.tight_layout()
+plt.savefig('commodity_correlations.png')
