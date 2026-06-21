@@ -1,0 +1,17 @@
+# Pair: Ammonia vs Urea
+pair_data = merged_df[['Ammonia ($/MT)', 'Urea ($/MT)']].dropna()
+count = len(pair_data)
+
+corr = pair_data.corr().iloc[0, 1]
+
+# Visualization
+plt.figure(figsize=(8, 6))
+sns.regplot(data=pair_data, x='Ammonia ($/MT)', y='Urea ($/MT)')
+plt.title(f'Ammonia vs Urea (r={corr:.2f})')
+plt.xlabel('Ammonia ($/MT)')
+plt.ylabel('Urea ($/MT)')
+plt.tight_layout()
+plt.savefig('ammonia_vs_urea.png')
+
+print(f"Correlation: {corr}")
+print(f"Data points: {count}")
