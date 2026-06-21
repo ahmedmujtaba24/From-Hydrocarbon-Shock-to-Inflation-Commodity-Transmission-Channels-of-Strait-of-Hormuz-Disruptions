@@ -1,0 +1,23 @@
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+wheat_data = {
+    'Date': ['01-10-1973', '01-12-1979', '01-10-1990', '01-04-2011', '01-03-2022', '01-12-2025', '04-03-2026', '01-04-2026', '15-05-2026', '12-06-2026'],
+    'Wheat ($/bu)': [4.25, 4.8, 3.2, 8.2, 11.2, 6.07, 6.25, 6.46, 6.75, 5.86]
+}
+df_wheat = pd.DataFrame(wheat_data)
+df_wheat['Date'] = pd.to_datetime(df_wheat['Date'], format='%d-%m-%y', errors='coerce') # let's just use exact match string matching first to prevent parsing errors
+
+urea_data = {
+    'Date': ['01-01-1971', '01-10-1973', '01-12-1979', '01-10-1990', '01-04-2011', '01-04-2022', '01-12-2025', '01-03-2026', '20-03-2026', '15-05-2026', '12-06-2026'],
+    'Urea ($/MT)': [16, 45, 120, 185, 420, 925, 315, 590, 625, 770.5, 620]
+}
+df_urea = pd.DataFrame(urea_data)
+
+merged_images = pd.merge(df_wheat, df_urea, on='Date', how='inner')
+print(merged_images)
+
+corr = merged_images['Wheat ($/bu)'].corr(merged_images['Urea ($/MT)'])
+print(f"Correlation: {corr}")
+print(f"Count: {len(merged_images)}")
