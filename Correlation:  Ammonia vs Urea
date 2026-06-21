@@ -1,0 +1,18 @@
+# Pair: Ammonia vs Urea
+pair_data_ammonia_urea = merged_df[['Ammonia ($/MT)', 'Urea ($/MT)']].dropna()
+count_ammonia_urea = len(pair_data_ammonia_urea)
+
+# Calculate correlation
+corr_ammonia_urea = pair_data_ammonia_urea.corr().iloc[0, 1]
+
+# Visualization for Ammonia vs Urea
+plt.figure(figsize=(8, 6))
+sns.regplot(data=pair_data_ammonia_urea, x='Ammonia ($/MT)', y='Urea ($/MT)')
+plt.title(f'Ammonia vs Urea (r={corr_ammonia_urea:.2f})')
+plt.xlabel('Ammonia ($/MT)')
+plt.ylabel('Urea ($/MT)')
+plt.tight_layout()
+plt.savefig('ammonia_vs_urea_updated.png')
+
+print(f"Ammonia vs Urea Correlation: {corr_ammonia_urea}")
+print(f"Ammonia vs Urea Data points: {count_ammonia_urea}")
