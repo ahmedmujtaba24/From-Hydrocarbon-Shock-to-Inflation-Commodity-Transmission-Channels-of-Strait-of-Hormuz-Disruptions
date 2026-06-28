@@ -1,0 +1,29 @@
+import pandas as pd
+
+file_path = 'Data.xlsx - Sheet1.csv'
+
+# Read exact series with dates to map correctly
+energy_df = pd.read_csv(file_path, skiprows=91, nrows=18).dropna(how='all', axis=1)
+energy_df.columns = [c.strip() for c in energy_df.columns]
+energy_df = energy_df[['Date', 'Brent Crude ($/bbl)']]
+
+chemicals_df = pd.read_csv(file_path, skiprows=112, nrows=12).dropna(how='all', axis=1)
+chemicals_df.columns = [c.strip() for c in chemicals_df.columns]
+chemicals_df = chemicals_df[['Date', 'Sulphur ($/MT)']]
+
+fertilizer_df = pd.read_csv(file_path, skiprows=127, nrows=11).dropna(how='all', axis=1)
+fertilizer_df.columns = [c.strip() for c in fertilizer_df.columns]
+fertilizer_df = fertilizer_df[['Date', 'DAP ($/MT)']]
+
+# Merge on Date
+m1 = pd.merge(energy_df, chemicals_df, on='Date', how='inner')
+print("Brent vs Sulphur merged:")
+print(m1)
+corr1 = pd.to_numeric(m1['Brent Crude ($/bbl)'], errors='coerce').corr(pd.to_numeric(m1['Sulphur ($/MT)'], errors='coerce'))
+print(f"Corr 1: {corr1}")
+
+m2 = pd.merge(chemicals_df, fertilizer_df, on='Date', how='inner')
+print("\nSulphur vs DAP merged:")
+print(m2)
+corr2 = pd.to_numeric(m2['Sulphur ($/MT)'], errors='coerce').corr(pd.to_numeric(m2['DAP ($/MT)'], errors='coerce'))
+print(f"Corr 2: {corr2}")
