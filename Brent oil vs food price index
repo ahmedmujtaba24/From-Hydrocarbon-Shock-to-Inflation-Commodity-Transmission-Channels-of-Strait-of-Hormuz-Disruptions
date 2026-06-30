@@ -1,7 +1,9 @@
 import pandas as pd
 import io
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-cpi_data = """Date	Global CPI (YoY %)	US CPI (YoY %)	OECD CPI (YoY %)	Energy CPI (YoY %)	Food CPI (YoY %)
+cpi_text = """Date	Global CPI (YoY %)	US CPI (YoY %)	OECD CPI (YoY %)	Energy CPI (YoY %)	Food CPI (YoY %)
 01-10-1973	6.50%	7.40%	7.80%	25.00%	14.00%
 01-04-1978	8.20%	6.50%	7.20%	10.00%	8.00%
 01-12-1979	12.50%	13.30%	11.80%	45.00%	18.00%
@@ -16,7 +18,7 @@ cpi_data = """Date	Global CPI (YoY %)	US CPI (YoY %)	OECD CPI (YoY %)	Energy CPI
 15-05-2026	4.80%	4.50%	4.60%	30.00%	12.00%
 10-06-2026	4.80%	4.50%	4.60%	28.00%	11.80%"""
 
-brent_data = """Date	Brent Crude ($/bbl)
+brent_text = """Date	Brent Crude ($/bbl)
 01-01-1965	N/A
 01-10-1973	3.29
 01-01-1974	11.58
@@ -36,26 +38,128 @@ brent_data = """Date	Brent Crude ($/bbl)
 15-05-2026	92.4
 12-06-2026	87.37"""
 
+df_cpi = pd.read_csv(io.StringIO(cpi_text), sep="\t")
+df_brent = pd.read_csv(io.StringIO(brent_text), sep="\t")
+
+# Clean
+df_cpi['Parsed_Date'] = pd.to_datetime(df_cpi['Date'], format='%d-%m-%Y')
+for col in df_cpi.columns:
+    if 'YoY' in col:
+        df_cpi[col] = df_cpi[col].str.rstrip('%').astype('float')
+
+df_brent['Parsed_Date'] = pd.to_datetime(df_brent['Date'], format='%d-%m-%Y')
+df_brent['Brent Crude ($/bbl)'] = pd.to_numeric(df_brent['Brent Crude ($/bbl)'], errors='coerce')
+df_brent = df_brent.dropna()
+
+# Event-level alignment (nearest match within 90 days to handle different reporting lags of the same event)
+df_merged = pd.merge_asof(
+    df_cpi.sort_values('Parsed_Date'), 
+    df_brent.sort_values('Parsed_Date'), 
+    on='Parsed_Date', 
+    direction='nearest', 
+    tolerance=pd.Timedelta(days=90)
+).dropna(subset=['Brent Crude ($/bbl)'])
+
+features = ['Global CPI (YoY %)', 'US CPI (YoY %)', 'OECD CPI (YoY %)', 'Energy CPI (YoY %)', 'Food CPI (YoY %)']
+corr_series = df_merged[features].corrwith(df_merged['Brent Crude ($/bbl)'])
+
+print("Event-based merged data sample:")
+print(df_merged[['Date_x', 'Date_y', 'Brent Crude ($/bbl)', 'Energy CPI (YoY %)', 'Global CPI (YoY %)']])
+print("\nCorrelation coefficients with Brent Crude:")
+print(corr_series)
+
+# Plotting using a clean BLUE color scheme as requested
+plt.figure(figsize=(10, 5))
+sns.set_theme(style="whitegrid")
+# Create a barplot of correlations in sorted order
+corr_df = corr_series.reset_index()
+corr_df.columns = ['CPI Indicator', 'Correlation Coefficient']
+corr_df = corr_df.sort_values(by='Correlation Coefficient', ascending=True)
+
+colors = sns.color_palette("Blues_d", n_colors=len(corr_df))
+bars = plt.barh(corr_df['CPI Indicator'], corr_df['Correlation Coefficient'], color=colors, height=0.6, edgecolor='none')
+
+plt.xlim(-1, 1)
+plt.axvline(0, color='black', linewidth=1, linestyle='-')
+plt.xlabel('Pearson Correlation Coefficient ($r$)', fontsize=12, fontweight='bold')
+plt.ylabel('Inflation Metric (YoY %)', fontsize=12, fontweight='bold')
+plt.title('Correlation Analysis: Brent Crude Spot Prices vs. Inflation Metrics\nAcross Major Supply Shock Events (1973-2026)', fontsize=13, fontweight='bold', pad=15)
+
+# Add value labels to bars
+for bar in bars:
+    width = bar.get_width()
+    if width < 0:
+        plt.text(width - 0.05, bar.get_y() + bar.get_height()/2, f'{width:.3f}', 
+                 va='center', ha='right', color='#084594', fontweight='bold', fontsize=10)
+    else:
+        plt.text(width + 0.05, bar.get_y() + bar.get_height()/2, f'{width:.3f}', 
+                 va='center', ha='left', color='#084594', fontweight='bold', fontsize=10)
+
+plt.tight_layout()
+plt.savefig('correlation_analysis_blue.png', dpi=300)
+print("Plot saved.")
+
 df_cpi = pd.read_csv(io.StringIO(cpi_data), sep="\t")
 df_brent = pd.read_csv(io.StringIO(brent_data), sep="\t")
 
-# Clean data
+# Clean percentage strings
 for col in df_cpi.columns:
-    if col != 'Date':
+    if 'YoY' in col:
         df_cpi[col] = df_cpi[col].str.rstrip('%').astype('float')
 
 df_brent['Brent Crude ($/bbl)'] = pd.to_numeric(df_brent['Brent Crude ($/bbl)'], errors='coerce')
 df_brent = df_brent.dropna()
 
-# Standardize date matching (strict date matching first)
-df_merged = pd.merge(df_cpi, df_brent, on='Date', how='inner')
-print("Strict Date Matching merged data:")
-print(df_merged)
+df_cpi['Parsed_Date'] = pd.to_datetime(df_cpi['Date'], format='%d-%m-%Y')
+df_brent['Parsed_Date'] = pd.to_datetime(df_brent['Date'], format='%d-%m-%Y')
 
-correlations = {}
+# Method 1: Strict exact date matches
+df_strict = pd.merge(df_cpi, df_brent, on='Date', how='inner')
+strict_corr = {}
 for col in df_cpi.columns:
-    if col != 'Date':
-        correlations[col] = df_merged['Brent Crude ($/bbl)'].corr(df_merged[col])
+    if 'YoY' in col:
+        strict_corr[col] = df_strict['Brent Crude ($/bbl)'].corr(df_strict[col])
 
-print("\nCorrelations:")
-print(correlations)
+# Method 2: Event-based matching (nearest within 90 days tolerance to line up event milestones)
+df_event = pd.merge_asof(df_cpi.sort_values('Parsed_Date'), df_brent.sort_values('Parsed_Date'), 
+                         on='Parsed_Date', direction='nearest', tolerance=pd.Timedelta(days=90)).dropna()
+
+event_corr = {}
+for col in df_cpi.columns:
+    if 'YoY' in col:
+        event_corr[col] = df_event['Brent Crude ($/bbl)'].corr(df_event[col])
+
+print("Strict Correlation Matrix:")
+print(strict_corr)
+print("\nEvent-based Correlation Matrix:")
+print(event_corr)
+
+# Create a nice dataframe for visual reporting
+corr_df = pd.DataFrame({
+    'Strict Date Matching': strict_corr,
+    'Event-Based Matching (±90d)': event_corr
+})
+
+print("\nCombined DataFrame:")
+print(corr_df)
+
+# Plotting the correlation coefficients using the user's requested blue theme
+plt.style.use('seaborn-v0_8-whitegrid' if 'seaborn-v0_8-whitegrid' in plt.style.available else 'default')
+fig, ax = plt.subplots(figsize=(10, 5))
+
+# Pivot or melt for seaborn barplot
+corr_df_melted = corr_df.reset_index().melt(id_vars='index', var_name='Matching Methodology', value_name='Pearson Correlation (r)')
+corr_df_melted.rename(columns={'index': 'CPI Indicator'}, inplace=True)
+
+# Using shades of blue
+sns.barplot(data=corr_df_melted, x='Pearson Correlation (r)', y='CPI Indicator', hue='Matching Methodology', palette='Blues_r', ax=ax, edgecolor='black', lw=0.7)
+
+ax.set_title('Correlation Analysis: Brent Crude Price vs. CPI Inflation Indicators', fontsize=14, fontweight='bold', pad=15)
+ax.set_xlabel('Pearson Correlation Coefficient (r)', fontsize=12, fontweight='bold')
+ax.set_ylabel('Inflation Baskets', fontsize=12, fontweight='bold')
+ax.axvline(x=0, color='gray', linestyle='--', linewidth=1)
+ax.set_xlim(-1, 1)
+
+plt.tight_layout()
+plt.savefig('correlation_analysis_blue.png', dpi=300)
+print("Plot saved successfully.")
